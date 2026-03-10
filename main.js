@@ -37,12 +37,22 @@ function hmsToSeconds(hmsStr) {
   const [h, m, s] = hmsStr.trim().split(":").map(Number);
   return h * 3600 + m * 60 + s;
 }
+function getDayName(dateStr) {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  return ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][date.getDay()];
+}
+function isEidDate(dateStr) {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return year === 2025 && month === 4 && day >= 10 && day <= 30;
+}
 // ============================================================
 // Function 1: getShiftDuration(startTime, endTime)
 // startTime: (typeof string) formatted as hh:mm:ss am or hh:mm:ss pm
 // endTime: (typeof string) formatted as hh:mm:ss am or hh:mm:ss pm
 // Returns: string formatted as h:mm:ss
 // ============================================================
+
 function getShiftDuration(startTime, endTime) {
     const startSeconds = timeToSeconds(startTime);
   const endSeconds = timeToSeconds(endTime);
