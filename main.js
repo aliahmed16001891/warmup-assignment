@@ -7,7 +7,6 @@ function timeToSeconds(timeStr) {
 
   let [hours, minutes, seconds] = timePart.split(":").map(Number);
 
-  // Convert 12-hour to 24-hour
   if (period === "am") {
     if (hours === 12) hours = 0; // 12:xx am → 0:xx (midnight)
   } else {
@@ -17,9 +16,6 @@ function timeToSeconds(timeStr) {
   return hours * 3600 + minutes * 60 + seconds;
 }
 
-/**
- * Converts a duration in total seconds to "h:mm:ss" format.
- */
 function secondsToHMS(totalSeconds) {
   totalSeconds = Math.abs(totalSeconds);
   const h = Math.floor(totalSeconds / 3600);
@@ -30,9 +26,7 @@ function secondsToHMS(totalSeconds) {
   return `${h}:${mm}:${ss}`;
 }
 
-/**
- * Converts a "h:mm:ss" duration string to total seconds.
- */
+
 function hmsToSeconds(hmsStr) {
   const [h, m, s] = hmsStr.trim().split(":").map(Number);
   return h * 3600 + m * 60 + s;
@@ -68,21 +62,19 @@ function getShiftDuration(startTime, endTime) {
 // ============================================================
  
 function getIdleTime(startTime, endTime) {
-    const DELIVERY_START = 8 * 3600;   // 8:00:00 AM in seconds
-  const DELIVERY_END   = 22 * 3600;  // 10:00:00 PM in seconds
+    const DELIVERY_START = 8 * 3600; 
+  const DELIVERY_END   = 22 * 3600;  
 
   const shiftStart = timeToSeconds(startTime);
   const shiftEnd   = timeToSeconds(endTime);
 
   let idleSeconds = 0;
 
-  // Idle time BEFORE delivery hours start (before 8 AM)
   if (shiftStart < DELIVERY_START) {
     const earlyEnd = Math.min(shiftEnd, DELIVERY_START);
     idleSeconds += earlyEnd - shiftStart;
   }
 
-  // Idle time AFTER delivery hours end (after 10 PM)
   if (shiftEnd > DELIVERY_END) {
     const lateStart = Math.max(shiftStart, DELIVERY_END);
     idleSeconds += shiftEnd - lateStart;
@@ -112,10 +104,9 @@ function getActiveTime(shiftDuration, idleTime) {
 // ============================================================
 
 function metQuota(date, activeTime) {
-  const NORMAL_QUOTA = 8 * 3600 + 24 * 60; // 8h 24m in seconds = 30240
-  const EID_QUOTA    = 6 * 3600;            // 6h in seconds     = 21600
+  const NORMAL_QUOTA = 8 * 3600 + 24 * 60; 
+  const EID_QUOTA    = 6 * 3600;            
 
-  // Check if date falls within Eid al-Fitr 2025 (April 10–30, 2025)
   const [year, month, day] = date.split("-").map(Number);
   const isEid =
     year === 2025 &&
@@ -140,10 +131,10 @@ function metQuota(date, activeTime) {
   const { driverID, driverName, date, startTime, endTime } = shiftObj;
 
   const raw   = fs.readFileSync(textFile, "utf8");
-  // Keep original lines (preserve any trailing newline behaviour)
+  
   const lines = raw.trim() === "" ? [] : raw.trim().split("\n");
 
-  // 1. Duplicate check — same driverID AND date
+  
   for (const line of lines) {
     const cols = line.split(",");
     if (cols[0].trim() === driverID && cols[2].trim() === date) {
@@ -151,14 +142,12 @@ function metQuota(date, activeTime) {
     }
   }
 
-  // 2. Compute derived fields
   const shiftDuration = getShiftDuration(startTime, endTime);
   const idleTime      = getIdleTime(startTime, endTime);
   const activeTime    = getActiveTime(shiftDuration, idleTime);
   const quota         = metQuota(date, activeTime);
   const hasBonus      = false;
 
-  // 3. Build the new CSV row
   const newRow = [
     driverID, driverName, date,
     startTime.trim(), endTime.trim(),
@@ -166,7 +155,6 @@ function metQuota(date, activeTime) {
     quota, hasBonus
   ].join(",");
 
-  // 4. Find insertion index — after last row of this driverID
   let lastIdx = -1;
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].split(",")[0].trim() === driverID) {
@@ -175,16 +163,15 @@ function metQuota(date, activeTime) {
   }
 
   if (lastIdx === -1) {
-    // Driver not in file — append at end
+    
     lines.push(newRow);
   } else {
-    // Insert right after last record of this driver
+    
     lines.splice(lastIdx + 1, 0, newRow);
   }
 
   fs.writeFileSync(textFile, lines.join("\n") + "\n", "utf8");
 
-  // 5. Return the full record object
   return {
     driverID,
     driverName,
@@ -213,7 +200,7 @@ function setBonus(textFile, driverID, date, newValue) {
   const updated = lines.map((line) => {
     const cols = line.split(",");
     if (cols[0].trim() === driverID && cols[2].trim() === date) {
-      cols[9] = String(newValue); // hasBonus is index 9
+      cols[9] = String(newValue); 
       return cols.join(",");
     }
     return line;
@@ -272,7 +259,7 @@ function getTotalActiveHoursPerMonth(textFile, driverID, month) {
     const recordMonth = parseInt(cols[2].trim().split("-")[1], 10);
     if (recordMonth !== month) continue;
 
-    totalSeconds += hmsToSeconds(cols[7].trim()); // activeTime is index 7
+    totalSeconds += hmsToSeconds(cols[7].trim()); 
   }
 
   return secondsToHMS(totalSeconds);
@@ -288,17 +275,16 @@ function getTotalActiveHoursPerMonth(textFile, driverID, month) {
 // Returns: string formatted as hhh:mm:ss
 // ============================================================
 function getRequiredHoursPerMonth(textFile, rateFile, bonusCount, driverID, month) {
-  const NORMAL_QUOTA = 8 * 3600 + 24 * 60; // 30240 s
-  const EID_QUOTA    = 6 * 3600;            // 21600 s
+  const NORMAL_QUOTA = 8 * 3600 + 24 * 60; 
+  const EID_QUOTA    = 6 * 3600;            
 
-  // Look up driver's day off from rateFile
   const rateLines = fs.readFileSync(rateFile, "utf8").trim().split("\n");
   let dayOff = null;
   for (const line of rateLines) {
     if (line.trim() === "") continue;
     const cols = line.split(",");
     if (cols[0].trim() === driverID) {
-      dayOff = cols[1].trim(); // e.g. "Tuesday"
+      dayOff = cols[1].trim(); 
       break;
     }
   }const shiftLines = fs.readFileSync(textFile, "utf8").trim().split("\n");
@@ -314,16 +300,13 @@ function getRequiredHoursPerMonth(textFile, rateFile, bonusCount, driverID, mont
     const recordMonth = parseInt(dateStr.split("-")[1], 10);
     if (recordMonth !== month) continue;
 
-    // Skip if this day is the driver's day off
     const dayName = getDayName(dateStr);
     if (dayOff && dayName === dayOff) continue;
 
-    // Apply correct quota
     const quota = isEidDate(dateStr) ? EID_QUOTA : NORMAL_QUOTA;
     totalRequired += quota;
   }
 
-  // Deduct 2 hours per bonus
   const bonusDeduction = bonusCount * 2 * 3600;
   totalRequired = Math.max(0, totalRequired - bonusDeduction);
 
@@ -341,7 +324,6 @@ function getRequiredHoursPerMonth(textFile, rateFile, bonusCount, driverID, mont
 function getNetPay(driverID, actualHours, requiredHours, rateFile) {
   const TIER_ALLOWANCE = { 1: 50, 2: 20, 3: 10, 4: 3 };
 
-  // Look up basePay and tier
   const rateLines = fs.readFileSync(rateFile, "utf8").trim().split("\n");
   let basePay = 0;
   let tier    = 0;
@@ -358,15 +340,14 @@ function getNetPay(driverID, actualHours, requiredHours, rateFile) {
   const actualSeconds   = hmsToSeconds(actualHours);
   const requiredSeconds = hmsToSeconds(requiredHours);
 
-  // No deduction if driver worked enough
   if (actualSeconds >= requiredSeconds) return basePay;
 
   const missingSeconds  = requiredSeconds - actualSeconds;
-  const missingHours    = missingSeconds / 3600; // fractional
+  const missingHours    = missingSeconds / 3600; 
 
   const allowance       = TIER_ALLOWANCE[tier] || 0;
   const billableHours   = Math.max(0, missingHours - allowance);
-  const billableFullHrs = Math.floor(billableHours); // only full hours count
+  const billableFullHrs = Math.floor(billableHours); 
 
   const deductionRate   = Math.floor(basePay / 185);
   const deduction       = billableFullHrs * deductionRate;
